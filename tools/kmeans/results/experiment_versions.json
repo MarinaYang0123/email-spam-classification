@@ -1,0 +1,118 @@
+{
+  "baseline": {
+    "matrix": "data/tfidf/tfidf_matrix.npz",
+    "svd": false,
+    "k": 5,
+    "max_cluster_pct": 78.94,
+    "silhouette": 0.060212,
+    "outputs": ["submit.csv", "cluster_keywords.csv", "cluster_samples.xlsx"]
+  },
+  "v2": {
+    "matrix": "data/tfidf/tfidf_cluster_matrix.npz",
+    "cluster_stopwords": "cluster_stopwords.json",
+    "max_df": 0.25,
+    "sublinear_tf": true,
+    "svd_components": 100,
+    "k": 5,
+    "max_cluster_pct": 37.54,
+    "silhouette": 0.096148,
+    "outputs": [
+      "submit_v2.csv",
+      "cluster_keywords_v2.csv",
+      "cluster_samples_v2.xlsx",
+      "data/cluster_labels_v2.jsonl",
+      "results/cluster_metrics_v2.json"
+    ]
+  },
+  "hybrid": {
+    "approach": "规则锁 3 类（暴力色情/广告营销/钓鱼）+ KMeans 探测剩余 2 类",
+    "structural_features": "data/structural_features.jsonl",
+    "taxonomy": "category_taxonomy.json",
+    "rule_weights": {"w_mismatch": 2.0, "w_url_suspicious": 2.0, "w_url_mismatch": 0.5, "phish_kw": 0.5},
+    "min_rule_score": 1.0,
+    "discover_k": 2,
+    "svd_components": 100,
+    "taxonomy_note": "广告营销已扩充吸收 发票/各类费用/SCI论文代发",
+    "distribution": {
+      "广告营销": 8397,
+      "探测类0(社交诱导/加微QQ私聊)": 7245,
+      "暴力色情": 4443,
+      "钓鱼邮件": 3015,
+      "探测类1(赌博博彩)": 896,
+      "空样本": 4
+    },
+    "phish_signal_source": {"display_mismatch": 385, "url_suspicious": 1259, "url_sender_mismatch": 2742},
+    "outputs": [
+      "submit_final.csv",
+      "final_keywords.csv",
+      "final_samples.xlsx",
+      "data/final_labels.jsonl",
+      "results/hybrid_report.md"
+    ]
+  },
+  "hybrid_v4_gambling": {
+    "approach": "规则锁 4 类（暴力色情/广告营销/钓鱼/赌博博彩）+ KMeans 探测 1 类",
+    "taxonomy": "category_taxonomy.json",
+    "discover_k": 1,
+    "discovered_base_id": 4,
+    "category_ids": {
+      "暴力色情": 0,
+      "广告营销": 1,
+      "钓鱼邮件": 2,
+      "赌博博彩": 3,
+      "探测类0": 4
+    },
+    "distribution": {
+      "广告营销": 7911,
+      "暴力色情": 6551,
+      "探测类0(学术会议/期刊邀稿)": 5511,
+      "钓鱼邮件": 3239,
+      "赌博博彩": 784,
+      "空样本": 4
+    },
+    "gambling_top_hits": ["特邀", "领取", "葡京", "次次", "mg", "bbin", "pt"],
+    "discovered_top": ["journal", "conference", "sci", "papers", "research", "会议", "international"]
+  },
+  "hybrid_v5_academic": {
+    "approach": "规则锁 5 类（含学术会议/期刊营销），默认无 KMeans，未命中记未分类",
+    "category_ids": {
+      "暴力色情": 0,
+      "广告营销": 1,
+      "钓鱼邮件": 2,
+      "赌博博彩": 3,
+      "学术会议/期刊营销": 4,
+      "未分类": 5
+    },
+    "distribution": {
+      "暴力色情": 6667,
+      "广告营销": 6480,
+      "学术会议/期刊营销": 3543,
+      "未分类": 3348,
+      "钓鱼邮件": 3190,
+      "赌博博彩": 768,
+      "空样本": 4
+    },
+    "ad_slim_note": "journal/conference/sci/论文/检索 等已从广告营销迁至学术类",
+    "academic_top_hits": ["research", "journal", "international", "conference", "ei", "sci", "投稿", "论文"]
+  },
+  "hybrid_v6_phish_combo_c": {
+    "approach": "方案 C 钓鱼组合触发：强结构单独触发；url_mismatch 须+关键词/短文本/英文引流模板",
+    "phish_short_tokens": 8,
+    "distribution": {
+      "暴力色情": 6820,
+      "广告营销": 6526,
+      "钓鱼邮件": 4087,
+      "学术会议/期刊营销": 3550,
+      "未分类": 2246,
+      "赌博博彩": 767,
+      "空样本": 4
+    },
+    "phish_signal_source": {
+      "strong_mismatch": 381,
+      "strong_url_susp": 1231,
+      "combo_kw": 2570,
+      "combo_short": 707,
+      "combo_dating": 252
+    }
+  }
+}

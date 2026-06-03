@@ -1,0 +1,30 @@
+# 密钥与本地配置（切勿提交）
+.env
+.env.local
+.env.*.local
+*.pem
+secrets/
+
+# Cursor IDE 本地状态
+.cursor/
+
+# 报告与导出产物（实验报告、字段统计、分类汇总等）
+reports/
+
+.obsidian/
+
+data/
+
+excel/
+
+# LLM 迭代产物可能含邮件摘要，默认不提交（按需去掉注释）
+# results/llm_iterate_*
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Excel 临时锁
+~$*.xlsx

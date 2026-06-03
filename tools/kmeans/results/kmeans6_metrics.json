@@ -1,0 +1,74 @@
+{
+  "k": 6,
+  "svd_components": 100,
+  "silhouette": 0.11572904322904724,
+  "ari_vs_hybrid": 0.21951527671273371,
+  "nmi_vs_hybrid": 0.3580701947321761,
+  "cluster_sizes": {
+    "0": 7270,
+    "1": 1195,
+    "2": 5945,
+    "3": 2550,
+    "4": 3223,
+    "5": 3817
+  },
+  "cluster_names": {
+    "0": "学术会议/期刊营销",
+    "1": "待命名簇",
+    "2": "学术会议/期刊营销",
+    "3": "暴力色情",
+    "4": "暴力色情",
+    "5": "广告营销(发票/费用)"
+  },
+  "hybrid_concentration": {
+    "暴力色情": {
+      "count": 6820,
+      "main_kmeans_cluster": 4,
+      "main_kmeans_name": "暴力色情",
+      "purity": 0.467,
+      "spread_clusters": 4
+    },
+    "广告营销": {
+      "count": 6526,
+      "main_kmeans_cluster": 5,
+      "main_kmeans_name": "广告营销(发票/费用)",
+      "purity": 0.57,
+      "spread_clusters": 5
+    },
+    "钓鱼邮件": {
+      "count": 4087,
+      "main_kmeans_cluster": 2,
+      "main_kmeans_name": "学术会议/期刊营销",
+      "purity": 0.477,
+      "spread_clusters": 6
+    },
+    "赌博博彩": {
+      "count": 767,
+      "main_kmeans_cluster": 0,
+      "main_kmeans_name": "学术会议/期刊营销",
+      "purity": 0.983,
+      "spread_clusters": 5
+    },
+    "学术会议/期刊营销": {
+      "count": 3550,
+      "main_kmeans_cluster": 2,
+      "main_kmeans_name": "学术会议/期刊营销",
+      "purity": 0.552,
+      "spread_clusters": 3
+    },
+    "未分类": {
+      "count": 2246,
+      "main_kmeans_cluster": 0,
+      "main_kmeans_name": "学术会议/期刊营销",
+      "purity": 0.402,
+      "spread_clusters": 6
+    },
+    "空样本": {
+      "count": 4,
+      "main_kmeans_cluster": 0,
+      "main_kmeans_name": "学术会议/期刊营销",
+      "purity": 1.0,
+      "spread_clusters": 1
+    }
+  }
+}

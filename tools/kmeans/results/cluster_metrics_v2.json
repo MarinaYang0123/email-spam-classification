@@ -1,0 +1,30 @@
+{
+  "final_run": {
+    "k": 5,
+    "random_state": 42,
+    "matrix": "data/tfidf/tfidf_cluster_matrix.npz",
+    "svd_components": 100,
+    "output_prefix": "v2",
+    "n_samples": 24000,
+    "n_valid": 23996,
+    "n_empty": 4,
+    "inertia": 19312.709790304292,
+    "silhouette": 0.096148,
+    "max_cluster_pct": 37.54,
+    "cluster_sizes": {
+      "-1": 4,
+      "0": 2558,
+      "1": 9009,
+      "2": 3236,
+      "3": 2588,
+      "4": 6605
+    },
+    "valid_cluster_sizes": {
+      "0": 2558,
+      "1": 9009,
+      "2": 3236,
+      "3": 2588,
+      "4": 6605
+    }
+  }
+}
