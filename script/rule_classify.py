@@ -131,13 +131,14 @@ def rule_scores(
     w_url_susp: float,
     w_url_mismatch: float,
     short_token_max: int,
+    phish_kw_weight: float = 0.5,
 ) -> tuple[dict[str, float], dict[str, list[str]], dict[str, bool]]:
     scores: dict[str, float] = {}
     hits: dict[str, list[str]] = {}
     for cat in rule_categories:
         hit = keyword_hits(tokens, taxonomy.get(cat, []))
         hits[cat] = hit
-        scores[cat] = 0.5 * len(hit) if cat == "钓鱼邮件" else float(len(hit))
+        scores[cat] = phish_kw_weight * len(hit) if cat == "钓鱼邮件" else float(len(hit))
 
     phish_kw = scores.get("钓鱼邮件", 0.0)
     combo = {
@@ -190,6 +191,7 @@ def run_scheme(
     w_url_suspicious: float = 2.0,
     w_url_mismatch: float = 0.5,
     phish_short_tokens: int = PHISH_SHORT_TOKEN_MAX,
+    phish_kw_weight: float = 0.5,
     keywords_per_cluster: int = 20,
     samples_per_cluster: int = 10,
 ) -> Counter:
@@ -219,6 +221,7 @@ def run_scheme(
             w_url_susp=w_url_suspicious,
             w_url_mismatch=w_url_mismatch,
             short_token_max=phish_short_tokens,
+            phish_kw_weight=phish_kw_weight,
         )
         cat = assign_rule_label(scores, cfg.rule_priority, min_score=min_rule_score)
         if cat is not None:

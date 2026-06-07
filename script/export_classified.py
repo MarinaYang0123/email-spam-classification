@@ -59,9 +59,15 @@ def load_jsonl(path: Path) -> list[dict]:
     return rows
 
 
-def load_labels(scheme_dir: Path) -> dict[str, dict]:
-    labels_path = scheme_dir / "outputs" / "labels.jsonl"
-    submit_path = scheme_dir / "outputs" / "submit.csv"
+def _variant_suffix(variant: str) -> str:
+    v = (variant or "").strip()
+    return f"_{v}" if v else ""
+
+
+def load_labels(scheme_dir: Path, *, variant: str = "") -> dict[str, dict]:
+    suffix = _variant_suffix(variant)
+    labels_path = scheme_dir / "outputs" / f"labels{suffix}.jsonl"
+    submit_path = scheme_dir / "outputs" / f"submit{suffix}.csv"
     if labels_path.exists():
         out: dict[str, dict] = {}
         with labels_path.open("r", encoding="utf-8") as fin:
@@ -233,13 +239,15 @@ def export_scheme(
     output_dir: Path,
     write_detail: bool = True,
     write_summary: bool = False,
+    variant: str = "",
 ) -> int:
-    labels = load_labels(spec["dir"])
+    labels = load_labels(spec["dir"], variant=variant)
     rows, columns = build_rows(cleaned_rows, labels, spec["category_order"])
 
     slug = spec["slug"]
+    variant_suffix = _variant_suffix(variant)
     if write_detail:
-        out_path = output_dir / f"{slug}_classified.{fmt}"
+        out_path = output_dir / f"{slug}_classified{variant_suffix}.{fmt}"
         if fmt == "jsonl":
             write_jsonl(rows, out_path)
         elif fmt == "csv":
@@ -250,12 +258,13 @@ def export_scheme(
             raise ValueError(f"未知格式：{fmt}")
 
     if write_summary:
-        summary_path = output_dir / f"{slug}_summary.csv"
+        summary_path = output_dir / f"{slug}_summary{variant_suffix}.csv"
         write_summary_csv(build_summary_rows(rows, spec["category_order"]), summary_path)
         print(f"  总结：{summary_path.relative_to(ROOT)}")
 
     dist = Counter(str(r.get("category", "")) for r in rows)
-    print(f"[{scheme_key}] 标签：{(spec['dir'] / 'outputs' / 'labels.jsonl').relative_to(ROOT)}")
+    label_name = f"labels{variant_suffix}.jsonl" if variant_suffix else "labels.jsonl"
+    print(f"[{scheme_key}] 标签：{(spec['dir'] / 'outputs' / label_name).relative_to(ROOT)}")
     if write_detail:
         print(f"  明细：{out_path.relative_to(ROOT)}  ({len(rows)} 条, {len(columns)} 列, {fmt})")
     else:
@@ -310,6 +319,11 @@ def main() -> None:
         action="store_true",
         help="仅生成 CSV 总结，不写 classified 明细文件",
     )
+    parser.add_argument(
+        "--variant",
+        default="",
+        help="标签变体后缀（如 full → 读取 outputs/labels_full.jsonl，写出 *_classified_full.*）",
+    )
     args = parser.parse_args()
 
     if args.summary_only:
@@ -344,6 +358,7 @@ def main() -> None:
             output_dir=args.output_dir,
             write_detail=write_detail,
             write_summary=write_summary,
+            variant=args.variant,
         )
     if write_detail:
         print(f"合计导出 {total} 条明细（按方案分别计数）")

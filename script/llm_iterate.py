@@ -1,6 +1,8 @@
 """LLM 引导词表迭代：审查未分类样本 → 词表扩充建议 → 语料校验 → 可选写回 taxonomy。
 
-支持 --scheme scheme1（默认）或 scheme2。API Key 见 README / .env.example。
+支持 --scheme / --schema scheme1（默认）或 scheme2。
+加 --full 时审查该方案下全部「未分类」邮件（可按 --batch-size 分批，默认 50）；默认仍为抽样。
+API Key 见 README / .env.example。
 """
 
 from __future__ import annotations
@@ -727,26 +729,32 @@ def main() -> None:
         description="LLM 引导词表迭代（审查未分类 → 词表建议 → 校验 → 可选 apply）",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=textwrap.dedent("""
-        方案2 全量压缩未分类：
-          python script/llm_iterate.py --scheme scheme2 --full --dry-run
-          python script/llm_iterate.py --scheme scheme2 --full
-          python script/llm_iterate.py --scheme scheme2 --full --validate-only
-          python script/llm_iterate.py --scheme scheme2 --full --apply
+        全量压缩未分类（须显式 --full，默认 batch_size=50）：
+          python script/llm_iterate.py --schema scheme2 --full --dry-run
+          python script/llm_iterate.py --schema scheme2 --full
+          python script/llm_iterate.py --schema scheme2 --full --batch-size 30
+          python script/llm_iterate.py --schema scheme2 --full --validate-only
+          python script/llm_iterate.py --schema scheme2 --full --apply
           # 人工复核 suggested 后覆盖 category_taxonomy.json，再：
           python schemes/scheme2_balanced5/classify.py
+
+        抽样模式（默认）：
+          python script/llm_iterate.py --dry-run
+          python script/llm_iterate.py --schema scheme1 --dry-run
+          python script/llm_iterate.py --schema scheme1
         """),
     )
     parser.add_argument(
-        "--scheme", choices=tuple(SCHEME_CONFIGS), default="scheme1",
+        "--scheme", "--schema", dest="scheme", choices=tuple(SCHEME_CONFIGS), default="scheme1",
         help="scheme1=语义五类（默认），scheme2=发票/商业拆分五类",
     )
     parser.add_argument(
         "--full", action="store_true",
-        help="全量模式：审查全部「未分类」（默认类别），按 --batch-size 分批调 API",
+        help="全量模式：审查全部「未分类」，按 --batch-size 分批调 API",
     )
     parser.add_argument(
-        "--batch-size", type=int, default=20,
-        help="全量模式下每批送模型的样本数，默认 20",
+        "--batch-size", type=int, default=50,
+        help="全量模式下每批送模型的样本数，默认 50",
     )
     parser.add_argument(
         "--resume", action="store_true",
@@ -830,7 +838,8 @@ def main() -> None:
         else:
             user_preview = build_user_prompt(samples, taxonomy, cluster_stats, ACTIVE)
             print(f"--dry-run：不调 API。user prompt 约 {len(user_preview)} 字符。")
-        print(f"下一步：python script/llm_iterate.py --scheme {ACTIVE.key}" + (" --full" if args.full else ""))
+        full_flag = " --full" if args.full else ""
+        print(f"下一步：python script/llm_iterate.py --schema {ACTIVE.key}{full_flag}")
         return
 
     if args.validate_only or args.apply:
@@ -946,8 +955,8 @@ def main() -> None:
     print("\n下一步：")
     print(f"  1. 阅读 {out_report.relative_to(ROOT)}")
     full_flag = " --full" if args.full else ""
-    print(f"  2. python script/llm_iterate.py --scheme {ACTIVE.key}{full_flag} --validate-only")
-    print(f"  3. python script/llm_iterate.py --scheme {ACTIVE.key}{full_flag} --apply")
+    print(f"  2. python script/llm_iterate.py --schema {ACTIVE.key}{full_flag} --validate-only")
+    print(f"  3. python script/llm_iterate.py --schema {ACTIVE.key}{full_flag} --apply")
     print(f"  4. 复核 category_taxonomy.suggested.json → 覆盖 category_taxonomy.json")
     print(f"  5. {ACTIVE.classify_cmd}")
 

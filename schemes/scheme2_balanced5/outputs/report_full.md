@@ -1,28 +1,38 @@
-# 方案2 · 均衡五类 分类报告
+# 方案2 · 均衡五类（全量归类 · full） 分类报告
 
 - 总样本：**24000**
-- 未分类：**393**
+- 未分类：**0**
 - 空样本：**4**
+- 本轮强制归类：**393** 条（原「未分类」）
 
 ## 类别分布
 
 | cluster_id | 类别 | 数量 | 占比 |
 |---:|---|---:|---:|
-| 0 | 暴力色情 | 7517 | 31.3% |
-| 1 | 发票营销 | 5462 | 22.8% |
-| 3 | 钓鱼邮件 | 4560 | 19.0% |
-| 4 | 学术营销 | 3735 | 15.6% |
-| 2 | 商业广告 | 2329 | 9.7% |
-| 5 | 未分类 | 393 | 1.6% |
+| 0 | 暴力色情 | 7619 | 31.7% |
+| 1 | 发票营销 | 5468 | 22.8% |
+| 3 | 钓鱼邮件 | 4618 | 19.2% |
+| 4 | 学术营销 | 3785 | 15.8% |
+| 2 | 商业广告 | 2506 | 10.4% |
 | -1 | 空样本 | 4 | 0.0% |
 
-## 钓鱼结构信号
+## 强制归类方法统计
 
-- phish_combo_kw: 2942
-- phish_url_susp: 1206
-- phish_combo_short: 713
-- phish_mismatch: 406
-- phish_combo_dating: 240
+- heuristic_default_zh: 94
+- heuristic_ads_en: 61
+- heuristic_default_short: 52
+- heuristic_academic: 49
+- heuristic_default_en: 47
+- heuristic_dating_url: 43
+- heuristic_ads_zh: 22
+- heuristic_url_en: 8
+- heuristic_url_mismatch_short: 5
+- heuristic_invoice_short: 4
+- heuristic_invoice: 2
+- heuristic_ed_spam: 2
+- heuristic_porn_zh: 2
+- heuristic_phish_zh: 1
+- heuristic_academic_en: 1
 
 ## 规则 Top 命中词
 

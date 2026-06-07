@@ -23,11 +23,13 @@
 │   ├── scheme1_semantic5/          # 暴力色情 / 广告营销 / 钓鱼 / 学术会议期刊 / 赌博
 │   │   ├── category_taxonomy.json
 │   │   ├── classify.py
-│   │   ├── outputs/                # submit.csv, labels.jsonl, keywords.csv, report.md …
+│   │   ├── classify_full.py        # 全量强制归类 → *_full.* 产物
+│   │   ├── outputs/                # 规则版 + 全量版（labels_full.jsonl 等）并存
 │   │   └── results/                # llm_iterate 迭代产物
 │   └── scheme2_balanced5/          # 暴力色情 / 发票营销 / 商业广告 / 钓鱼 / 学术营销
 │       ├── category_taxonomy.json
 │       ├── classify.py
+│       ├── classify_full.py
 │       └── outputs/
 ├── tools/
 │   └── kmeans/                     # KMeans 早期探索（不入 schemes 提交）
@@ -37,6 +39,8 @@
 │   ├── data_explore.py … tokenize_and_tfidf.py
 │   ├── structural_features.py
 │   ├── rule_classify.py            # 被 schemes/*/classify.py 调用
+│   ├── force_classify_remainder.py # 全量强制归类引擎（classify_full.py）
+│   ├── export_classified.py        # 合并 cleaned + labels；支持 --variant full
 │   ├── hybrid_classify.py          # 兼容入口 → scheme1
 │   ├── cluster_baseline.py         # 产物 → tools/kmeans/
 │   ├── kmeans6_compare.py
@@ -245,14 +249,36 @@ python schemes/scheme1_semantic5/classify.py
 python schemes/scheme2_balanced5/classify.py
 ```
 
+> **方案2 精度微调**：`classify.py` 显式传 `run_scheme(CFG, phish_kw_weight=1.0)`，并把平局优先级调成「钓鱼邮件 > 暴力色情」。原因：钓鱼关键词（`account/login/verify/解封/验证码`）在共享引擎里默认被砍半（`phish_kw_weight=0.5`），且暴力色情优先级最高，导致 `account+security` 这类强钓鱼特征被 `adult`、`unsubscribe` 等泛词压过而误判。恢复满权重 + 钓鱼优先后，钓鱼 17.9%→19.0%、暴力色情 32.0%→31.3%、未分类 1.8%→1.6%，误判被修正。`phish_kw_weight` 默认 `0.5`，**方案1 不传该参数、输出完全不变**。
 
-| 方案  | 提交文件                                           |
-| --- | ---------------------------------------------- |
-| 方案1 | `schemes/scheme1_semantic5/outputs/submit.csv` |
-| 方案2 | `schemes/scheme2_balanced5/outputs/submit.csv` |
+
+| 方案  | 规则分类提交文件                                           | 全量归类提交文件（无未分类） |
+| --- | -------------------------------------------------- | ---------------- |
+| 方案1 | `schemes/scheme1_semantic5/outputs/submit.csv`     | `…/submit_full.csv` |
+| 方案2 | `schemes/scheme2_balanced5/outputs/submit.csv`     | `…/submit_full.csv` |
 
 
 每套 `outputs/` 含 `labels.jsonl`、`submit.csv`、`keywords.csv`、`samples.xlsx`、`report.md`。
+
+### 2.9.1 全量强制归类（`classify_full.py` + `force_classify_remainder.py`）
+
+在规则分类基础上，对剩余「未分类」样本结合 `cleaned_emails.jsonl` 做启发式强制五类归类（作业假定均为垃圾邮件）。**不覆盖**默认 `outputs/`，另写带 `_full` 后缀的产物：
+
+| 文件 | 说明 |
+| ---- | ---- |
+| `labels_full.jsonl` / `submit_full.csv` | 全量标签（未分类 = 0，仅保留空样本） |
+| `report_full.md` / `keywords_full.csv` / `samples_full.xlsx` | 全量报告与抽样 |
+| `force_classify_audit_full.jsonl` | 本轮由「未分类」强制归类的审计记录 |
+
+```bash
+# 须先跑 classify.py 生成 labels.jsonl
+python schemes/scheme1_semantic5/classify.py
+python schemes/scheme2_balanced5/classify.py
+
+# 全量强制归类（两套方案）
+python schemes/scheme1_semantic5/classify_full.py
+python schemes/scheme2_balanced5/classify_full.py
+```
 
 **共享引擎 `script/rule_classify.py`**
 
@@ -264,39 +290,50 @@ python schemes/scheme2_balanced5/classify.py
 
 ### 2.11 `llm_iterate.py`：LLM 引导词表迭代（可选）
 
-**定位**：开发期 copilot，审查未分类/探测类漏网样本 → 产出**五类**词表扩充建议（含赌博博彩、学术会议/期刊营销，并区分广告营销）→ 语料校验。
+**定位**：开发期 copilot，审查未分类/探测类漏网样本 → 产出**五类**词表扩充建议（含赌博博彩、学术会议/期刊营销，并区分广告营销）→ 语料校验 → 可选写回建议词表。
+
+**两种模式**：
+
+- **抽样（默认）**：每类最多 `--per-category` 条（默认 25）；有「探测类*」则抽探测类，否则「未分类+空样本」。
+- **全量**：须显式加 `--full`，审查该方案下全部「未分类」邮件，按 `--batch-size` 分批调 API（默认 50 条/批）。
 
 ```bash
 # 0) 先跑 classify.py 得到 labels.jsonl
 python schemes/scheme1_semantic5/classify.py
 
-# 1) 只抽样，不调 API
+# --- 抽样（默认）---
+
 python script/llm_iterate.py --dry-run
-python script/llm_iterate.py --scheme scheme2 --dry-run
+python script/llm_iterate.py --schema scheme1 --dry-run
+python script/llm_iterate.py --schema scheme1              # 调 API，自动校验并输出 llm_iterate_report.md
+python script/llm_iterate.py --schema scheme1 --validate-only
+python script/llm_iterate.py --schema scheme1 --apply
 
-# 2) 配置 API Key 后调用模型
-python script/llm_iterate.py
-python script/llm_iterate.py --scheme scheme2
+# --- 全量压缩未分类（须 --full）---
 
-# 3) 仅校验已有 proposal（2会自动校验并输出报告llm_iterate_report.md）
-python script/llm_iterate.py --validate-only
+python script/llm_iterate.py --schema scheme2 --full --dry-run
+python script/llm_iterate.py --schema scheme2 --full
+python script/llm_iterate.py --schema scheme2 --full --batch-size 30   # 自定义 batch
+python script/llm_iterate.py --schema scheme2 --full --resume           # 续跑未完成批次
+python script/llm_iterate.py --schema scheme2 --full --validate-only
+python script/llm_iterate.py --schema scheme2 --full --apply
 
-# 4) 将校验通过的词写入建议词表
-python script/llm_iterate.py --apply
-
-# 5) 人工复核 category_taxonomy.suggested.json → 合并进 category_taxonomy.json → 重跑 classify
+# 人工复核 category_taxonomy.suggested.json → 合并进 category_taxonomy.json → 重跑 classify
 python schemes/scheme1_semantic5/classify.py
 ```
 
 
 | 参数                        | 默认        | 说明                                           |
 | ------------------------- | --------- | -------------------------------------------- |
-| `--scheme`                | `scheme1` | `scheme1` / `scheme2`，决定词表与 results 目录       |
+| `--scheme` / `--schema`   | `scheme1` | `scheme1` / `scheme2`，决定词表与 results 目录       |
+| `--full`                  | —         | 全量审查「未分类」；不加则默认抽样                           |
+| `--batch-size`            | 50        | 全量模式下每批送模型的样本数                               |
+| `--resume`                | —         | 全量续跑：跳过 `llm_iterate_raw_batches.jsonl` 中已有批次   |
 | `--dry-run`               | —         | 只写 `llm_iterate_samples.jsonl`，不调 API        |
-| `--categories`            | 自动        | 有「探测类*」则抽探测类；否则「未分类+空样本」                     |
-| `--per-category`          | 25        | 每类抽样数                                        |
-| `--boundary-per-category` | 5         | 额外抽边界对照类（scheme 相关）                          |
-| `--validate-only`         | —         | 语料覆盖率 / 误伤率校验                                |
+| `--categories`            | 自动        | 全量时默认「未分类」；抽样时有「探测类*」则抽探测类，否则「未分类+空样本」   |
+| `--per-category`          | 25        | 抽样模式：每类最多 N 条                                 |
+| `--boundary-per-category` | 5         | 抽样模式：额外抽边界对照类（scheme 相关）                      |
+| `--validate-only`         | —         | 语料覆盖率 / 误伤率校验，重写 `llm_iterate_report.md`      |
 | `--apply`                 | —         | 写 `category_taxonomy.suggested.json`（不覆盖原词表） |
 
 
@@ -343,14 +380,19 @@ python script/export_classified.py --format xlsx
 # 仅导出某一方案
 python script/export_classified.py --scheme scheme2
 python script/export_classified.py --scheme scheme2 --summary-only
+
+# 导出全量强制归类版（读 labels_full.jsonl，写出 *_classified_full.*）
+python script/export_classified.py --scheme scheme1 --variant full
+python script/export_classified.py --scheme scheme2 --variant full --summary
 ```
 
 
 | 参数                | 默认                          | 说明                                                                   |
 | ----------------- | --------------------------- | -------------------------------------------------------------------- |
 | `--scheme`        | `all`                       | `scheme1` / `scheme2` / `all`                                        |
+| `--variant`       | （空）                        | 标签变体后缀；`full` → 读 `outputs/labels_full.jsonl`，写 `*_classified_full.*` |
 | `--format` / `-f` | `jsonl`                     | 明细格式：`jsonl` / `csv` / `xlsx`（xlsx 需 openpyxl）                       |
-| `--summary`       | 关                           | 额外写 `{slug}_summary.csv`（rank / cluster_id / category / count / pct） |
+| `--summary`       | 关                           | 额外写 `{slug}_summary[_variant].csv`（rank / cluster_id / category / count / pct） |
 | `--summary-only`  | 关                           | 只写 CSV 总结，跳过 classified 明细                                           |
 | `--cleaned`       | `data/cleaned_emails.jsonl` | 原始清洗 JSONL                                                           |
 | `--output-dir`    | `reports/results`           | 输出目录                                                                 |
@@ -361,6 +403,7 @@ python script/export_classified.py --scheme scheme2 --summary-only
 
 | 脚本                                | 用途                                                    |
 | --------------------------------- | ----------------------------------------------------- |
+| `script/force_classify_remainder.py` | 全量强制五类归类（`classify_full.py` 调用）                    |
 | `script/_audit_summary.py`        | 统计 `reports/single_en_audit.jsonl` 高频字母段与右邻汉字，辅助维护白名单 |
 | `script/_analyze_unclassified.py` | 对未分类样本做占位符/关键词命中的一次性探查（非流水线步骤）                        |
 
